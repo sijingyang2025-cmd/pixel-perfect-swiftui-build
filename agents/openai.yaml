@@ -1,0 +1,7 @@
+interface:
+  display_name: "Pixel-Perfect SwiftUI Build"
+  short_description: "High-fidelity SwiftUI from UI designs"
+  default_prompt: "Use $pixel-perfect-swiftui-build to implement these iOS UI designs in SwiftUI with screenshot-based visual QA."
+
+policy:
+  allow_implicit_invocation: true
