@@ -1,21 +1,31 @@
 ---
 name: pixel-perfect-swiftui-build
-description: Use when implementing iOS SwiftUI screens from Figma files, image mockups, or full UI design sets with high visual fidelity. Guides design analysis, cross-screen design-system extraction, asset-vs-code decisions, SwiftUI component implementation, screenshot-based visual QA, iterative correction, and simulator/device validation.
+description: Use when implementing iOS SwiftUI screens from PNG/JPG/WebP UI screenshots, image mockups, or full image-only design sets with high visual fidelity. Guides image-only source normalization, visual measurement, color sampling, OCR/copy preservation, asset-vs-code decisions, SwiftUI component implementation, screenshot overlay QA, iterative correction, and simulator/device validation.
 ---
 
 # Pixel-Perfect SwiftUI Build
 
 ## Overview
 
-Use this skill to turn a UI design set into a consistent, high-fidelity SwiftUI frontend. The workflow optimizes for visual accuracy first, then component reuse, then business wiring.
+Use this skill to turn image-only UI mockups into a consistent, high-fidelity SwiftUI frontend. The workflow optimizes for visual accuracy first, then component reuse, then business wiring.
 
 Do not start by writing screens. First understand the whole design system, decide what must be an image asset, and define the smallest project-specific SwiftUI design system that can reproduce the screens consistently.
 
 ## Core Rule
 
+### Image-Only Source Mode
+
+When the input is only PNG/JPG/WebP screenshots or pasted UI images, the image is the only source of truth. Do not assume hidden design tokens, layers, auto layout rules, font names, export slices, or component metadata. All dimensions, colors, spacing, typography, radii, shadows, and asset boundaries must be inferred from visual observation, image measurement, local sampling, OCR, and screenshot iteration.
+
+Mark uncertain values as inferred. Do not present guessed tokens as if they were measured or provided by a design file.
+
+### Asset-vs-Code Rule
+
 If the design contains polished raster visuals such as full-page backgrounds, 3D icons, product illustrations, decorative constellations, glass objects, painterly mountains, or heavily rendered hero art, implement those as image assets. Do not approximate them with SF Symbols, gradients, Canvas drawings, or generic SwiftUI shapes unless the design itself is code-native.
 
 SwiftUI should own layout, text, interaction, card structure, navigation, state, accessibility, and responsive behavior. Image assets should own non-trivial illustration and icon rendering.
+
+Do not use a full-screen screenshot as the final implementation. Full-image placement with invisible hotspots is allowed only as a temporary prototype or alignment aid. Final work should be SwiftUI structure plus extracted or recreated assets.
 
 ## Workflow
 
@@ -33,7 +43,68 @@ Create a short design inventory:
 
 If only one screen is provided, still identify likely reusable patterns and call out what cannot be inferred across the product.
 
-### 2. Produce Visual Analysis Before Code
+### 2. Normalize the Reference Image
+
+Before visual analysis or code, record a reference normalization note for every supplied image:
+
+- Source file path and image dimensions in pixels, e.g. `1290x2796`.
+- Likely device and scale, e.g. `430pt wide @3x`, `393pt wide @3x`, or unknown.
+- Point conversion used for implementation, e.g. `px / 3 = pt`.
+- Whether status bar, Dynamic Island/notch, home indicator, tab bar, and safe areas are included in the image.
+- Whether the image is a full screenshot, cropped screen, design canvas, exported frame, or composite mockup.
+- Any aspect-ratio mismatch with the target simulator/device.
+
+If device mapping is uncertain, say so and choose the nearest iPhone viewport for the first pass. Do not silently mix pixel and point measurements.
+
+### 3. Measure Before Code
+
+Create a compact visual measurement table before implementation. Include measured or inferred values for:
+
+| Item | Value | Confidence |
+| --- | --- | --- |
+| Reference width/height | px and derived pt | measured/inferred |
+| Page horizontal margin | pt | measured/inferred |
+| Top content start | pt from safe area or image top | measured/inferred |
+| Major card width/height | pt | measured/inferred |
+| Card radius | pt | inferred unless measured |
+| Main vertical gaps | pt | inferred |
+| H1/title size and weight | pt/weight | inferred |
+| Body/caption size and line height | pt | inferred |
+| Button/chip/input height | pt | inferred |
+| Icon/illustration size | pt | measured/inferred |
+| Tab bar height and bottom offset | pt | measured/inferred |
+
+Use this table as the first SwiftUI sizing pass. If later screenshots drift, update the table instead of randomly adjusting constants.
+
+### 4. Sample Colors Before Code
+
+Do not describe colors only by feel. Extract or estimate approximate HEX values:
+
+- Page background top/middle/bottom.
+- Main card fill.
+- Card border/stroke.
+- Primary accent.
+- Secondary accent.
+- Main text.
+- Secondary text.
+- Disabled/placeholder text.
+- Shadow/glow colors.
+
+For gradients, record start/end colors and direction. For compressed images or painterly backgrounds, sample the visual center of representative regions and average nearby pixels. Avoid default iOS system blue unless the reference visibly uses it.
+
+### 5. Extract Copy With OCR
+
+Before implementing the screen, extract visible text and preserve it exactly:
+
+- Page titles and subtitles.
+- Card titles and captions.
+- Buttons, chips, tabs, placeholders.
+- Dates, numbers, amounts, counters, labels.
+- Empty/error/loading state text.
+
+If OCR is uncertain, list the uncertain strings for user confirmation. Do not rewrite, shorten, translate, or invent copy while doing visual reconstruction.
+
+### 6. Produce Visual Analysis Before Code
 
 Before editing files, write a compact visual breakdown:
 
@@ -48,7 +119,7 @@ Before editing files, write a compact visual breakdown:
 
 Do not invent new design language at this stage.
 
-### 3. Establish a Project-Specific Design System
+### 7. Establish a Project-Specific Design System
 
 Create a small SwiftUI design system before building multiple screens. Keep it domain-specific, not a generic component library.
 
@@ -65,9 +136,17 @@ Recommended structure:
 
 Add previews or preview screens showing component states before assembling full screens.
 
-### 4. Decide Asset vs Code
+### 8. Decide Asset vs Code
 
-Use this decision table:
+Classify visual material into three groups:
+
+| Group | Examples | Implementation |
+| --- | --- | --- |
+| Direct cut assets | backgrounds, logos, complex illustrations, complex rendered icons | crop/export from source when quality is sufficient |
+| Recreated assets | style-specific 3D icons, decorative objects, painterly motifs | generate or redraw as independent raster assets |
+| SwiftUI/SF Symbols | simple buttons, rows, cards, basic glyphs, native controls | implement in code |
+
+Then use this decision table:
 
 | Element | Prefer Image Asset | Prefer SwiftUI |
 | --- | --- | --- |
@@ -82,7 +161,7 @@ Use this decision table:
 
 Avoid mixed-style icons. If one section uses rendered 3D icons, use image assets for all icons in that section.
 
-### 5. Build a Static Reference Screen First
+### 9. Build a Static Reference Screen First
 
 Pick the screen with the richest shared patterns as the benchmark. Implement it statically before connecting real data.
 
@@ -97,7 +176,7 @@ Rules:
 
 Only after the benchmark screen is visually close should you generalize components and build the remaining screens.
 
-### 6. Implement Cross-Screen Consistency
+### 10. Implement Cross-Screen Consistency
 
 For each new screen:
 
@@ -109,7 +188,7 @@ For each new screen:
 
 If a design set has several screens with the same card or icon family, implement the family once and pass content/assets as parameters.
 
-### 7. Generate and Prepare Image Assets
+### 11. Generate and Prepare Image Assets
 
 For generated or manually supplied raster assets:
 
@@ -128,9 +207,11 @@ Common transparent-icon sequence:
 4. Import into `.xcassets`.
 5. Render via `Image("AssetName").resizable().scaledToFit()`.
 
-### 8. Screenshot-Based QA Loop
+If a cropped asset has white matte, compression edges, or leftover background, clean alpha locally. If cleanup damages the asset, recreate it as an independent image rather than forcing code to hide the problem.
 
-Every implementation cycle must include a rendered screenshot.
+### 12. Screenshot Overlay QA Loop
+
+Every implementation cycle must include a rendered screenshot. A screenshot is not enough by itself; compare it against the reference at a normalized size.
 
 Recommended loop:
 
@@ -138,10 +219,13 @@ Recommended loop:
 2. Launch on simulator.
 3. Wait long enough to avoid splash/blank startup frames.
 4. Capture a screenshot.
-5. Compare against the design.
-6. List only the largest 3-5 visual differences.
-7. Fix those differences.
-8. Repeat.
+5. Resize the simulator screenshot and the reference to the same logical width.
+6. Compare side-by-side and, when possible, with a semi-transparent overlay.
+7. List only the largest 3 visual differences.
+8. Fix those differences.
+9. Repeat.
+
+Do not change typography, spacing, colors, and assets all in the same correction pass unless the issue requires it. Keep each pass attributable: say whether the pass changed layout, typography, color, asset crop, or state.
 
 Compare:
 
@@ -158,7 +242,7 @@ Compare:
 
 Do not claim visual completion without a fresh screenshot.
 
-### 9. Device Validation
+### 13. Device Validation
 
 After simulator QA, run on a real device when available.
 
@@ -186,14 +270,27 @@ When the user reports a visual mismatch:
 - If a code-rendered decoration duplicates a background image, remove the code decoration.
 - If a semantic icon is wrong, regenerate/replace the asset with the correct subject without changing unrelated layout.
 
+Use confidence labels when discussing measurements:
+
+- `measured`: obtained from image dimensions, pixel sampling, screenshot coordinates, or deterministic tooling.
+- `inferred`: estimated from visual inspection.
+- `user-confirmed`: explicitly confirmed by the user.
+
+Do not let inferred values harden into permanent tokens without screenshot validation or user confirmation.
+
 ## Pitfalls to Avoid
 
 - Starting with a generic component library before understanding the design set.
+- Assuming Figma layers, design tokens, font names, or export slices when the input is only images.
 - Building business logic before the static benchmark screen is visually close.
 - Mixing SF Symbols with rendered 3D icons in the same visual family.
+- Long-term use of full-screen screenshot backgrounds with invisible hotspots.
 - Drawing complex decorative backgrounds in SwiftUI when the design is image-like.
 - Leaving both image background art and old code-drawn decoration active.
 - Ignoring transparent padding in generated assets.
+- Treating pixel measurements as SwiftUI points without scale normalization.
+- Rewriting OCR-visible text during visual reconstruction.
+- Fixing too many mismatch categories in one pass, making regression causes unclear.
 - Letting text truncate inside chips because icons consume too much width.
 - Treating the first simulator screenshot as final when it captured a startup blank frame.
 - Optimizing only one page while breaking cross-screen design consistency.
@@ -204,10 +301,15 @@ When the user reports a visual mismatch:
 Before reporting completion:
 
 - Full design set or available screen set has been inventoried.
+- Reference images were normalized to device scale and SwiftUI points.
+- A measurement table was produced or intentionally deferred with a reason.
+- Colors were sampled or approximated with stated confidence.
+- OCR-visible copy was preserved exactly or uncertainties were listed.
 - Design system tokens/components exist or were intentionally not needed.
 - Custom art is implemented as image assets.
+- Asset crops were checked for white matte, transparent padding, and scale.
 - Static benchmark screen has been screenshot-tested.
-- Largest visible differences have been iterated.
+- Largest visible differences have been iterated with normalized side-by-side or overlay comparison.
 - New screens reuse shared components.
 - Simulator build passes.
 - Real-device build/install is attempted when available.
